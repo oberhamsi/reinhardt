@@ -323,6 +323,86 @@ passed to it in the current context of the page.
      // turning keywoard arguments into FilterExpressions
 
 
+Simple tags
+--------------
+
+Many template tags take a number of arguments -- strings or template variables
+-- and return a string after doing some processing based solely on
+the input arguments and some external information. For example, the
+`current_time` tag we wrote in [custom-template-tags.md] is of this variety: 
+we give it a format string, it returns the time as a string.
+
+To ease the creation of these types of tags, Reinhardt provides a helper function,
+`simple_tag`. This function, which is a method of
+`reinhardt.library`, takes a function that accepts any number of
+arguments, wraps it in a `render` function and the other necessary bits
+mentioned above.
+
+Our earlier `current_time` function could thus be written like this:
+
+    var dates = require('ringo/utils/dates');
+    var {simpleTag} = require('reinhardt/library');
+
+    exports.current_time = simpleTag(function(formatString) {
+       return dates.format(new Date(), formatString);
+    })
+
+
+A few things to note about the `simple_tag` helper function:
+
+* Checking for the required number of arguments, etc., has already been
+  done by the time our function is called, so we don't need to do that.
+* The quotes around the argument (if any) have already been stripped away,
+  so we just receive a plain string.
+* If the argument was a template variable, our function is passed the
+  current value of the variable, not the variable itself.
+
+If your template tag needs to access the current context, you can use the
+`simpleTagWithContext` function when registering your tag:
+
+    // The first argument *must* be called "context" here.
+    exports.current_time = simpleTagWithContext(function(context, formatString) {
+        var timezone = context.get('timezone');
+        var locale = context.get('locale');
+        return dates.format(new Date(), formatString, locale, timezone);
+    });
+
+
+For more information on how the `simpleTagWithContext` option works, see the section
+on "inclusion tags" below.
+
+Giving your function a name makes debugging easier and is recommended:
+
+    exports.current_time = simpleTag(function current_time(context, formatString) {
+
+    });
+
+Although JavaScript does not have the concept of keyword arguments (as opposed
+to the normal positional arguments), they are supported by `simpleTag` functions.
+
+Assuming you have this tag:
+
+    exports.my_tag = simpleTag(function my_tag(a, b) {
+        return ....
+    })
+
+Then in the template you can either pass the arguments by position:
+
+    {% my_tag "foo" "bar" %}
+
+Or as keyword arguments:
+
+    {% my_tag a="foo" b="bar" %}
+    // of course the order of keyword arguments is exchangeable:
+    {% my_tag b="bar" a="foo" %}
+
+The values for keyword arguments are set using the equal sign (`=`) 
+and must be provided after the positional arguments.
+
+   // mixing positional and keyword argumetns
+   {% mytag "foo" b="bar" %}
+
+
 Setting a variable in the context
 --------------------------------------
 
